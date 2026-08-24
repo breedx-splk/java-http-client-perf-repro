@@ -6,6 +6,10 @@ to standard output, and a summary is written to standard error.
 
 ## HTTP
 
+This benchmark uses **OkHttp 4.12.0**. Each iteration performs a synchronous GET with
+`OkHttpClient.newCall(request).execute()`; it does not use Java's built-in HTTP client or the AWS
+SDK HTTP client.
+
 Run either agent version against the local collector:
 
 ```shell
