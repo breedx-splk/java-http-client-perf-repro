@@ -57,10 +57,23 @@ tasks.register<JavaExec>("benchmark") {
     )
 
     args(
-        providers.gradleProperty("iterations").orElse("100").get(),
-        providers.gradleProperty("warmups").orElse("10").get(),
-        providers.gradleProperty("url").orElse("https://www.splunk.com/").get(),
+        providers.gradleProperty("iterations").orElse("1000").get(),
+        providers.gradleProperty("warmups").orElse("100").get(),
+        providers.gradleProperty("url").orElse("http://localhost:50054/").get(),
     )
+}
+
+tasks.register<JavaExec>("httpMockServer") {
+    group = "application"
+    description = "Runs the local HTTP benchmark service"
+    dependsOn(tasks.classes)
+
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "com.splunk.repro.HttpMockServer"
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    args(providers.gradleProperty("httpPort").orElse("50054").get())
 }
 
 tasks.register<JavaExec>("grpcServer") {

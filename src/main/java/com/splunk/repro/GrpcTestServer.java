@@ -12,7 +12,8 @@ public final class GrpcTestServer {
     Server server = ServerBuilder.forPort(port).addService(GrpcPingService.bindService()).build();
     server.start();
     Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
-    System.out.printf("gRPC benchmark server listening on localhost:%d%n", port);
+    System.out.printf(
+        "gRPC benchmark server listening on localhost:%d with a 10%% failure rate%n", port);
     server.awaitTermination();
   }
 }

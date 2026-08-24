@@ -2,12 +2,14 @@ package com.splunk.repro;
 
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerServiceDefinition;
+import io.grpc.Status;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ThreadLocalRandom;
 
 final class GrpcPingService {
   static final String SERVICE_NAME = "com.splunk.repro.PingService";
@@ -28,6 +30,14 @@ final class GrpcPingService {
   }
 
   private static void ping(String request, StreamObserver<String> responseObserver) {
+    if (ThreadLocalRandom.current().nextInt(10) == 0) {
+      Status status =
+          ThreadLocalRandom.current().nextBoolean()
+              ? Status.PERMISSION_DENIED
+              : Status.UNAVAILABLE;
+      responseObserver.onError(status.withDescription("benchmark error").asRuntimeException());
+      return;
+    }
     responseObserver.onNext("pong");
     responseObserver.onCompleted();
   }

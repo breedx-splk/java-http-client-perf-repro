@@ -3,6 +3,7 @@ package com.splunk.repro;
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ClientCalls;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import java.util.Arrays;
@@ -24,21 +25,32 @@ public final class GrpcClientBenchmark {
     ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build();
     try {
       for (int i = 0; i < warmups; i++) {
-        ping(channel);
+        pingStatus(channel);
       }
 
       long[] durations = new long[iterations];
-      System.out.println("iteration,duration_ms");
+      String[] statusCodes = new String[iterations];
+      System.out.println("iteration,duration_ms,status_code");
       for (int i = 0; i < iterations; i++) {
         long start = System.nanoTime();
-        ping(channel);
+        statusCodes[i] = pingStatus(channel);
         durations[i] = System.nanoTime() - start;
-        System.out.printf(Locale.ROOT, "%d,%.3f%n", i + 1, toMillis(durations[i]));
+        System.out.printf(
+            Locale.ROOT, "%d,%.3f,%s%n", i + 1, toMillis(durations[i]), statusCodes[i]);
       }
 
-      printSummary(durations, host, port, warmups);
+      printSummary(durations, statusCodes, host, port, warmups);
     } finally {
       channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+    }
+  }
+
+  private static String pingStatus(ManagedChannel channel) {
+    try {
+      ping(channel);
+      return "OK";
+    } catch (StatusRuntimeException exception) {
+      return exception.getStatus().getCode().name();
     }
   }
 
@@ -52,20 +64,24 @@ public final class GrpcClientBenchmark {
     }
   }
 
-  private static void printSummary(long[] durations, String host, int port, int warmups) {
+  private static void printSummary(
+      long[] durations, String[] statusCodes, String host, int port, int warmups) {
     long[] sorted = durations.clone();
     Arrays.sort(sorted);
     double mean = Arrays.stream(sorted).average().orElseThrow() / 1_000_000.0;
+    long failures = Arrays.stream(statusCodes).filter(status -> !"OK".equals(status)).count();
 
     System.err.printf(
         Locale.ROOT,
-        "# java=%s agent=%s target=%s:%d warmups=%d iterations=%d min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
+        "# java=%s agent=%s target=%s:%d warmups=%d iterations=%d failures=%d failure_rate=%.1f%% min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
         System.getProperty("java.version"),
         System.getProperty("benchmark.agent.version", "none"),
         host,
         port,
         warmups,
         sorted.length,
+        failures,
+        failures * 100.0 / sorted.length,
         toMillis(sorted[0]),
         mean,
         percentile(sorted, 0.50),

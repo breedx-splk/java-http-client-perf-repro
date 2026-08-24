@@ -10,20 +10,29 @@ This benchmark uses **OkHttp 4.12.0**. Each iteration performs a synchronous GET
 `OkHttpClient.newCall(request).execute()`; it does not use Java's built-in HTTP client or the AWS
 SDK HTTP client.
 
-Run either agent version against the local collector:
+Start the local HTTP service in one terminal. Each request rolls a d10; a roll of 1 returns either
+HTTP 403 or 500:
 
 ```shell
-./gradlew -q benchmark -PagentVersion=2.29.0 -Piterations=100 > results-2.29.0.csv
-./gradlew -q benchmark -PagentVersion=2.30.0 -Piterations=100 > results-2.30.0.csv
+./gradlew -q httpMockServer
 ```
 
-The 2.29.0 and 2.30.0 agent JARs are checked in at the repository root. There are 10 unmeasured
-warmup requests by default. Override the defaults with `-Pwarmups=0`, `-Piterations=1000`, or
-`-Purl=https://example.com/`.
+Then run either agent version in another terminal:
+
+```shell
+./gradlew -q benchmark -PagentVersion=2.29.0 > results-2.29.0.csv
+./gradlew -q benchmark -PagentVersion=2.30.0 > results-2.30.0.csv
+```
+
+The 2.29.0 and 2.30.0 agent JARs are checked in at the repository root. The client performs 100
+warmups and 1,000 measured requests by default. The service listens on port 50054. Override it with
+`-PhttpPort=50055` on the server and `-Purl=http://localhost:50055/` on the client. Other benchmark
+overrides include `-Pwarmups=0` and `-Piterations=1000`.
 
 ## gRPC
 
-Start the local unary gRPC service in one terminal:
+Start the local unary gRPC service in one terminal. Each request rolls a d10; a roll of 1 returns
+either `PERMISSION_DENIED` or `UNAVAILABLE`:
 
 ```shell
 ./gradlew -q grpcServer
