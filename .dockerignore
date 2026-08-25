@@ -1,0 +1,12 @@
+.git
+.gradle
+splunk-otel-javaagent*.jar
+*.png
+src
+gradle
+*.gradle.kts
+gradlew
+README.md
+build/*
+!build/install/
+!build/install/**

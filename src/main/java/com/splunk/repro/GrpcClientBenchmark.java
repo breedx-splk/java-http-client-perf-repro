@@ -73,9 +73,10 @@ public final class GrpcClientBenchmark {
 
     System.err.printf(
         Locale.ROOT,
-        "# java=%s agent=%s target=%s:%d warmups=%d iterations=%d failures=%d failure_rate=%.1f%% min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
+        "# java=%s agent=%s agent_flavor=%s target=%s:%d warmups=%d iterations=%d failures=%d failure_rate=%.1f%% min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
         System.getProperty("java.version"),
         System.getProperty("benchmark.agent.version", "none"),
+        System.getProperty("benchmark.agent.flavor", "none"),
         host,
         port,
         warmups,

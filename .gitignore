@@ -3,3 +3,4 @@
 .idea/
 build/
 results-*.csv
+secure-app-otel-extension/

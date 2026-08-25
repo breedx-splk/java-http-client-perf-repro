@@ -70,9 +70,10 @@ public final class HttpClientBenchmark {
 
     System.err.printf(
         Locale.ROOT,
-        "# java=%s agent=%s url=%s warmups=%d iterations=%d failures=%d failure_rate=%.1f%% min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
+        "# java=%s agent=%s agent_flavor=%s url=%s warmups=%d iterations=%d failures=%d failure_rate=%.1f%% min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
         System.getProperty("java.version"),
         System.getProperty("benchmark.agent.version", "none"),
+        System.getProperty("benchmark.agent.flavor", "none"),
         url,
         warmups,
         sorted.length,

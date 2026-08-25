@@ -11,12 +11,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.client.config.ClientAsyncConfiguration;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
@@ -40,7 +45,7 @@ public final class AwsCloudWatchAsyncBenchmark {
           "iterations, concurrency, and completionThreads must be positive; warmups cannot be negative");
     }
 
-    ExecutorService completionExecutor = Executors.newFixedThreadPool(completionThreads);
+    ExecutorService completionExecutor = createCompletionExecutor(completionThreads);
     try (CloudWatchAsyncClient client = createClient(endpoint, completionExecutor)) {
       ListMetricsRequest request =
           ListMetricsRequest.builder()
@@ -74,6 +79,11 @@ public final class AwsCloudWatchAsyncBenchmark {
         .region(Region.US_EAST_1)
         .credentialsProvider(
             StaticCredentialsProvider.create(AwsBasicCredentials.create("benchmark", "benchmark")))
+        .overrideConfiguration(
+            ClientOverrideConfiguration.builder()
+                .putAdvancedOption(SdkAdvancedClientOption.USER_AGENT_PREFIX, "SignalFx")
+                .putAdvancedOption(SdkAdvancedClientOption.USER_AGENT_SUFFIX, "cwinfo")
+                .build())
         .httpClientBuilder(
             NettyNioAsyncHttpClient.builder()
                 .maxConcurrency(HTTP_MAX_CONCURRENCY)
@@ -85,6 +95,30 @@ public final class AwsCloudWatchAsyncBenchmark {
                 .advancedOption(FUTURE_COMPLETION_EXECUTOR, completionExecutor)
                 .build())
         .build();
+  }
+
+  private static ExecutorService createCompletionExecutor(int threadCount) {
+    AtomicInteger threadNumber = new AtomicInteger();
+    ThreadFactory threadFactory =
+        runnable -> {
+          Thread thread =
+              new Thread(
+                  runnable,
+                  "cloudwatch-metric-list-concurrent-sdkv2-nio-http-pool-0-"
+                      + threadNumber.incrementAndGet());
+          thread.setDaemon(true);
+          return thread;
+        };
+    ThreadPoolExecutor executor =
+        new ThreadPoolExecutor(
+            threadCount,
+            threadCount,
+            1,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(),
+            threadFactory);
+    executor.allowCoreThreadTimeOut(true);
+    return executor;
   }
 
   private static void runRequests(
@@ -169,9 +203,10 @@ public final class AwsCloudWatchAsyncBenchmark {
 
     System.err.printf(
         Locale.ROOT,
-        "# java=%s agent=%s endpoint=%s warmups=%d iterations=%d concurrency=%d completion_threads=%d failures=%d failure_rate=%.1f%% min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
+        "# java=%s agent=%s agent_flavor=%s endpoint=%s warmups=%d iterations=%d concurrency=%d completion_threads=%d failures=%d failure_rate=%.1f%% min_ms=%.3f mean_ms=%.3f p50_ms=%.3f p95_ms=%.3f max_ms=%.3f%n",
         System.getProperty("java.version"),
         System.getProperty("benchmark.agent.version", "none"),
+        System.getProperty("benchmark.agent.flavor", "none"),
         endpoint,
         warmups,
         sorted.length,
